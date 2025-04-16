@@ -23,6 +23,7 @@ let package = Package(
         .library(name: "SpeziLLMLocal", targets: ["SpeziLLMLocal"]),
         .library(name: "SpeziLLMLocalDownload", targets: ["SpeziLLMLocalDownload"]),
         .library(name: "SpeziLLMOpenAI", targets: ["SpeziLLMOpenAI"]),
+        .library(name: "SpeziLLMOpenAIVoice", targets: ["SpeziLLMOpenAIVoice"]),
         .library(name: "SpeziLLMFog", targets: ["SpeziLLMFog"])
     ],
     dependencies: [
@@ -88,6 +89,21 @@ let package = Package(
             swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
         ),
         .target(
+            name: "SpeziLLMOpenAIVoice",
+            dependencies: [
+                .target(name: "SpeziLLM"),
+                .target(name: "SpeziLLMOpenAI"),
+                .target(name: "GeneratedOpenAIClient"),
+                .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+                .product(name: "OpenAPIURLSession", package: "swift-openapi-urlsession"),
+                .product(name: "SpeziFoundation", package: "SpeziFoundation"),
+                .product(name: "Spezi", package: "Spezi"),
+                .product(name: "SpeziChat", package: "SpeziChat"),
+                .product(name: "SpeziKeychainStorage", package: "SpeziStorage")
+            ],
+            swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
+        ),
+        .target(
             name: "SpeziLLMFog",
             dependencies: [
                 .target(name: "SpeziLLM"),
@@ -107,7 +123,8 @@ let package = Package(
         .testTarget(
             name: "SpeziLLMTests",
             dependencies: [
-                .target(name: "SpeziLLMOpenAI")
+                .target(name: "SpeziLLMOpenAI"),
+                .target(name: "SpeziLLMOpenAIVoice")
             ],
             swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
         )

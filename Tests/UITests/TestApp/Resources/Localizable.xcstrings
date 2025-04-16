@@ -41,6 +41,9 @@
         }
       }
     },
+    "Input" : {
+
+    },
     "LLM_DOWNLOAD_DESCRIPTION" : {
       "localizations" : {
         "en" : {
@@ -101,6 +104,17 @@
         }
       }
     },
+    "LLM_OPENAI_VOICE_VIEW_TITLE" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LLM OpenAI Voice"
+          }
+        }
+      }
+    },
     "OK" : {
       "localizations" : {
         "en" : {
@@ -110,6 +124,12 @@
           }
         }
       }
+    },
+    "OneShot length: %lld characters" : {
+
+    },
+    "Send" : {
+
     },
     "SPEZI_LLM_TEST_NAVIGATION_TITLE" : {
       "localizations" : {

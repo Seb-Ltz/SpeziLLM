@@ -19,6 +19,7 @@ import SpeziLLM
 import SpeziLLMFog
 import SpeziLLMLocal
 import SpeziLLMOpenAI
+import SpeziLLMOpenAIVoice
 
 
 class TestAppDelegate: SpeziAppDelegate {
@@ -50,6 +51,7 @@ class TestAppDelegate: SpeziAppDelegate {
                 LLMFogPlatform(configuration: .init(host: "spezillmfog.local", caCertificate: nil))
                 LLMOpenAIPlatform()
                 LLMLocalPlatform() // Note: Spezi LLM Local is not compatible with simulators.
+                LLMOpenAIVoicePlatform()
             }
         }
     }
