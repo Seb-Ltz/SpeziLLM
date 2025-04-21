@@ -86,15 +86,4 @@ public class LLMOpenAIVoicePlatform: LLMPlatform, DefaultInitializable, @uncheck
             }
         }
     }
-
-}
-
-// TODO: Merge with LLMOpenAI
-
-public enum LLMOpenAIConstants {
-    static let credentialsUsername = "OpenAIGPT"
-}
-
-extension CredentialsTag {
-    static let openAIKey = CredentialsTag.genericPassword(forService: "openai.com")
 }

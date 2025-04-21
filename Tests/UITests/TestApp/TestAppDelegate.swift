@@ -19,7 +19,6 @@ import SpeziLLM
 import SpeziLLMFog
 import SpeziLLMLocal
 import SpeziLLMOpenAI
-import SpeziLLMOpenAIVoice
 
 
 class TestAppDelegate: SpeziAppDelegate {

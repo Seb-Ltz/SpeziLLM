@@ -20,7 +20,7 @@ extension LLMOpenAIVoiceSession {
             await finishGenerationWithError(LLMOpenAIVoiceError.unknown(error), on: continuation)
         }
     }
-    
+    // swiftlint:disable:next function_body_length
     func receiveLoop() async {
         guard let task = webSocketTask else {
             return
@@ -60,6 +60,44 @@ extension LLMOpenAIVoiceSession {
                         audioDeltaContinuation?.finish()
                     } else if type == "response.audio_transcript.done" {
                         Self.logger.debug("Final transcript: \(jsonDict["transcript"] as? String ?? "Not found")")
+                    } else if type == "response.done" {
+                        guard let response = jsonDict["response"] as? [String: Any],
+                              let output = response["output"] as? [[String: Any]],
+                              let type = output[0]["type"] as? String,
+                              let name = output[0]["name"] as? String,
+                              let callId = output[0]["call_id"] as? String,
+                              let arguments = output[0]["arguments"] as? String,
+                              type == "function_call"
+                        else {
+                            continue
+                        }
+                        
+                        Self.logger.log("arguments function call: \(arguments)")
+                        Task {
+                            try schema.functions[name]?.injectParameters(from: arguments.data(using: .utf8) ?? Data())
+                            let functionOutput = try await schema.functions[name]?.execute()
+                            let eventData: [String: Any] = [
+                                "type": "conversation.item.create",
+                                "item": [
+                                    "type": "function_call_output",
+                                    "call_id": callId,
+                                    "output": functionOutput
+                                ]
+                            ]
+                            
+                            let eventDataJson = try JSONSerialization.data(withJSONObject: eventData, options: .prettyPrinted)
+
+                            let responseData: [String: Any] = [
+                                "type": "response.create"
+                            ]
+                            let responseDataJson = try JSONSerialization.data(withJSONObject: responseData, options: .prettyPrinted)
+                            
+                            
+                            try await webSocketTask?.send(.string(String(decoding: eventDataJson, as: UTF8.self)))
+                            Self.logger.debug("Function call event:\n\(String(decoding: eventDataJson, as: UTF8.self))")
+                            
+                            try await webSocketTask?.send(.string(String(decoding: responseDataJson, as: UTF8.self)))
+                        }
                     } else if type == "error" {
                         Self.logger.error("Encountered error: \(jsonDict)")
                     }
@@ -83,7 +121,12 @@ extension LLMOpenAIVoiceSession {
                 "content":
                     context
                     .filter { $0.role == .user }
-                    .compactMap { [ "type": "input_text", "text": $0.content ] }
+                    .filter { $0.content.starts(with: "text:") }
+                    .compactMap { [ "type": "input_text", "text": $0.content.dropFirst("text:".count) ] }
+                + context
+                    .filter { $0.role == .user }
+                    .filter { $0.content.starts(with: "voice:") }
+                    .compactMap { [ "type": "input_audio", "audio": $0.content.dropFirst("voice:".count) ] }
             ]
         ]
         

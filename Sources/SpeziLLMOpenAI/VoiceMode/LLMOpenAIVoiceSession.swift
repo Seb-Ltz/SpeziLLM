@@ -8,8 +8,8 @@
 
 import Foundation
 import os
-import SpeziLLM
 import SpeziKeychainStorage
+import SpeziLLM
 
 
 @Observable
@@ -20,9 +20,9 @@ public final class LLMOpenAIVoiceSession: LLMSession, @unchecked Sendable {
     @MainActor public var context: LLMContext = []
 
     /// A set of `Task`s managing the ``LLMOpenAISession`` output generation.
-    @ObservationIgnored private var tasks: Set<Task<(), Never>> = []
+    @ObservationIgnored var tasks: Set<Task<(), Never>> = []
     /// Ensuring thread-safe access to the `LLMOpenAISession/task`.
-    @ObservationIgnored private var lock = NSLock()
+    @ObservationIgnored var lock = NSLock()
     @ObservationIgnored var sessionCreatedContinuation: CheckedContinuation<Bool, Never>?
     @ObservationIgnored var webSocketTask: URLSessionWebSocketTask?
     @ObservationIgnored var audioDeltaContinuation: AsyncThrowingStream<String, any Error>.Continuation?
@@ -35,13 +35,11 @@ public final class LLMOpenAIVoiceSession: LLMSession, @unchecked Sendable {
         self.platform = platform
         self.schema = schema
         self.keychainStorage = keychainStorage
-
-//        setup()
     }
     
     @discardableResult
     public func generate() async throws -> AsyncThrowingStream<String, any Error> {
-        // Warning, as we generate a new stream, and store it into this class,
+        // Warning: as we generate a new stream, and store it into this class,
         // when calling generate() multiple times in a row, the first streams will never finish
         // as the receive loop will be working on the end audioDeltaContinuations...
         // TODO: Fix this, probably by assigning UUIDs to the events, and having a dict of continuations
@@ -63,51 +61,6 @@ public final class LLMOpenAIVoiceSession: LLMSession, @unchecked Sendable {
         }
 
         return stream
-    }
-    
-    private func setup() async -> Bool {
-        await MainActor.run {
-            self.state = .loading
-        }
-
-        let credentials = try? keychainStorage.retrieveCredentials(
-            withUsername: LLMOpenAIConstants.credentialsUsername,
-            for: .openAIKey
-        )
-        
-        guard let openAPIKey = credentials?.password ?? platform.configuration.apiToken else {
-            Self.logger.warning("Missing OpenAI key credentials or apiToken variable")
-            return false
-        }
-        
-        let url = URL(string: "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview")!
-
-        var request = URLRequest(url: url)
-        request.addValue("Bearer \(openAPIKey)", forHTTPHeaderField: "Authorization")
-        request.addValue("realtime=v1", forHTTPHeaderField: "OpenAI-Beta")
-
-        self.webSocketTask = URLSession.shared.webSocketTask(with: request)
-        self.webSocketTask?.resume()
-        
-        let task = Task {
-            await self.receiveLoop()
-        }
-
-        _ = lock.withLock {
-            tasks.insert(task)
-        }
-
-        guard await withCheckedContinuation({ continuation in
-            self.sessionCreatedContinuation = continuation
-        }) else {
-            return false
-        }
-        
-        await MainActor.run {
-            self.state = .ready
-        }
-
-        return true
     }
     
     public func cancel() {

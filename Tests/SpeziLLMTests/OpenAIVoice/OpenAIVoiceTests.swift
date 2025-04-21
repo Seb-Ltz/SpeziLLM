@@ -8,7 +8,7 @@
 import Foundation
 @testable import Spezi
 @testable import SpeziLLM
-@testable import SpeziLLMOpenAIVoice
+@testable import SpeziLLMOpenAI
 import Testing
 
 struct OpenAIVoiceTests {

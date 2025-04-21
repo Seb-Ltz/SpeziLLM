@@ -45,8 +45,8 @@
 		97C93FD02B999DD10023F4B9 /* LLMFogChatTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97C93FCF2B999DD10023F4B9 /* LLMFogChatTestView.swift */; };
 		A34DBB3E2DAFDD6900C52731 /* LLMVoiceTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34DBB3A2DAFDD6900C52731 /* LLMVoiceTestView.swift */; };
 		A34DBB3F2DAFDD6900C52731 /* PCMPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34DBB3B2DAFDD6900C52731 /* PCMPlayer.swift */; };
-		A34DBB412DAFDDD700C52731 /* SpeziLLMOpenAIVoice in Frameworks */ = {isa = PBXBuildFile; productRef = A34DBB402DAFDDD700C52731 /* SpeziLLMOpenAIVoice */; };
 		A34DBB462DAFF25B00C52731 /* LLMOpenAIVoiceOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34DBB452DAFF25200C52731 /* LLMOpenAIVoiceOnboardingView.swift */; };
+		A357A9A12DB69B230075BD4A /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A357A9A02DB69B200075BD4A /* AudioRecorder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -96,6 +96,7 @@
 		A34DBB3A2DAFDD6900C52731 /* LLMVoiceTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMVoiceTestView.swift; sourceTree = "<group>"; };
 		A34DBB3B2DAFDD6900C52731 /* PCMPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCMPlayer.swift; sourceTree = "<group>"; };
 		A34DBB452DAFF25200C52731 /* LLMOpenAIVoiceOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMOpenAIVoiceOnboardingView.swift; sourceTree = "<group>"; };
+		A357A9A02DB69B200075BD4A /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,7 +111,6 @@
 				9722A5A22B5B5CB20005645E /* SpeziLLMLocal in Frameworks */,
 				9722A5A62B5B5CB20005645E /* SpeziLLMOpenAI in Frameworks */,
 				9722A5A42B5B5CB20005645E /* SpeziLLMLocalDownload in Frameworks */,
-				A34DBB412DAFDDD700C52731 /* SpeziLLMOpenAIVoice in Frameworks */,
 				979D41902BB3EBD8001953BD /* SpeziAccount in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -273,6 +273,7 @@
 		A34DBB3C2DAFDD6900C52731 /* LLMOpenAIVoice */ = {
 			isa = PBXGroup;
 			children = (
+				A357A9A02DB69B200075BD4A /* AudioRecorder.swift */,
 				A34DBB452DAFF25200C52731 /* LLMOpenAIVoiceOnboardingView.swift */,
 				A34DBB3A2DAFDD6900C52731 /* LLMVoiceTestView.swift */,
 				A34DBB3B2DAFDD6900C52731 /* PCMPlayer.swift */,
@@ -305,7 +306,6 @@
 				97A36E142B999EA60034D821 /* SpeziLLMFog */,
 				9770F2902BB3C40C00478571 /* SpeziFirebaseAccount */,
 				979D418F2BB3EBD8001953BD /* SpeziAccount */,
-				A34DBB402DAFDDD700C52731 /* SpeziLLMOpenAIVoice */,
 			);
 			productName = Example;
 			productReference = 2F6D139228F5F384007C25D6 /* TestApp.app */;
@@ -427,6 +427,7 @@
 				9748DBEE2B5C811F00B917EE /* LLMOpenAIFunctionPerson.swift in Sources */,
 				A34DBB462DAFF25B00C52731 /* LLMOpenAIVoiceOnboardingView.swift in Sources */,
 				A34DBB3E2DAFDD6900C52731 /* LLMVoiceTestView.swift in Sources */,
+				A357A9A12DB69B230075BD4A /* AudioRecorder.swift in Sources */,
 				A34DBB3F2DAFDD6900C52731 /* PCMPlayer.swift in Sources */,
 				9772D6802B03381400E62B9D /* LLMOpenAIOnboardingView.swift in Sources */,
 				9756D25E2B0316A30006B6BD /* LLMLocalChatTestView.swift in Sources */,
@@ -827,10 +828,6 @@
 		97A36E142B999EA60034D821 /* SpeziLLMFog */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SpeziLLMFog;
-		};
-		A34DBB402DAFDDD700C52731 /* SpeziLLMOpenAIVoice */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SpeziLLMOpenAIVoice;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
