@@ -50,7 +50,7 @@ class TestAppDelegate: SpeziAppDelegate {
                 LLMFogPlatform(configuration: .init(host: "spezillmfog.local", caCertificate: nil))
                 LLMOpenAIPlatform()
                 LLMLocalPlatform() // Note: Spezi LLM Local is not compatible with simulators.
-                LLMOpenAIVoicePlatform()
+                LLMOpenAIVoicePlatform(configuration: .init(turnDetectionSettings: LLMRealtimeTurnDetectionSettings()))
             }
         }
     }

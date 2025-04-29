@@ -1,8 +1,9 @@
 //
-//  LLMOpenAIVoicePlatform.swift
-//  SpeziLLM
+// This source file is part of the Stanford Spezi open source project
 //
-//  Created by Sébastien Letzelter on 16.04.25.
+// SPDX-FileCopyrightText: 2025 Stanford University and the project authors (see CONTRIBUTORS.md)
+//
+// SPDX-License-Identifier: MIT
 //
 
 import Foundation
@@ -11,17 +12,6 @@ import Spezi
 import SpeziFoundation
 import SpeziKeychainStorage
 import SpeziLLM
-
-/// Represents the configuration of the Spezi ``LLMOpenAIVoicePlatform``.
-public struct LLMOpenAIVoicePlatformConfiguration: Sendable {
-    /// The OpenAI API token on a global basis.
-    let apiToken: String?
-
-    public init(apiToken: String? = nil) {
-        self.apiToken = apiToken
-    }
-}
-
 
 public class LLMOpenAIVoicePlatform: LLMPlatform, DefaultInitializable, @unchecked Sendable {
     /// A Swift Logger that logs important information from the ``LLMOpenAIVoiceSession``.

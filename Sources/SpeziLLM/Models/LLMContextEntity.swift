@@ -66,7 +66,9 @@ public struct LLMContextEntity: Codable, Equatable, Hashable, Identifiable, Send
     public let id: UUID
     /// The creation date of the ``LLMContextEntity``.
     public let date: Date
-    
+    /// If the data contains audio
+    public let isAudio: Bool
+
     
     /// Creates a ``LLMContextEntity`` which is the building block of a Spezi ``LLMContext``.
     ///
@@ -81,12 +83,14 @@ public struct LLMContextEntity: Codable, Equatable, Hashable, Identifiable, Send
         content: Content,
         complete: Bool = true,
         id: UUID = .init(),
-        date: Date = .now
+        date: Date = .now,
+        isAudio: Bool = false
     ) {
         self.role = role
         self.content = String(content)
         self.complete = complete
         self.id = id
         self.date = date
+        self.isAudio = isAudio
     }
 }

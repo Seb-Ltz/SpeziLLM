@@ -48,6 +48,17 @@ extension LLMContext {
         self.append(.init(role: .user, content: input, id: id, date: date))
     }
     
+    /// Append an ``LLMContextEntity/Role-swift.enum/user`` audio input to the ``LLMContext``.
+    ///
+    /// - Parameters:
+    ///    - input: The ``LLMContextEntity/Role-swift.enum/user`` input that should be appended, as 24k Hz mono PCM data.
+    ///    - id: A unique identifier of the ``LLMContextEntity``.
+    ///    - date: The `Date` of the ``LLMContextEntity``.
+    @MainActor
+    public mutating func appendAudio(userInput input: Data, id: UUID = .init(), date: Date = .now) {
+        self.append(.init(role: .user, content: input.base64EncodedString(), id: id, date: date, isAudio: true))
+    }
+    
     /// Append a ``LLMContextEntity/Role-swift.enum/system`` prompt to the ``LLMContext``.
     ///
     /// - Parameters:

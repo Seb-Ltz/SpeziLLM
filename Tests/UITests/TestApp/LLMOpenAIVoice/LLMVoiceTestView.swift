@@ -34,7 +34,8 @@ struct LLMVoiceTestView: View {
                 if !isLoading {
                     Button("Send") {
                         Task {
-                            await send(content: inputText)
+                            llm.context.append(userInput: inputText)
+                            await send()
                         }
                     }
                 } else {
@@ -47,7 +48,8 @@ struct LLMVoiceTestView: View {
                             audioRecorder.stop()
                             Self.pcmPlayer.play(rawPCMData: audioRecorder.base64PCM)
                             Task {
-                                await send(content: audioRecorder.base64PCM.base64EncodedString(), isText: false)
+                                llm.context.appendAudio(userInput: audioRecorder.base64PCM)
+                                await send()
                             }
                         } else {
                             checkPermissionAndRecord()
@@ -72,10 +74,8 @@ struct LLMVoiceTestView: View {
         }
     }
     
-    func send(content: String, isText: Bool = true) async {
+    func send() async {
         isLoading = true
-        print("Content: \(content.count) chars length")
-        llm.context.append(userInput: "\(isText ? "text:" : "voice:" )\(content)")
 
         do {
             var oneShot = ""

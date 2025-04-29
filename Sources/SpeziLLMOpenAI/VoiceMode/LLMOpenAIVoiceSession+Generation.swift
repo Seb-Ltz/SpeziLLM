@@ -14,12 +14,18 @@ import SpeziLLM
 extension LLMOpenAIVoiceSession {
     // swiftlint:disable:next identifier_name
     func _generate(continuation: AsyncThrowingStream<String, any Error>.Continuation) async {
+        guard platform.configuration.turnDetectionSettings == nil else {
+            print("Commit to audio buffer only supported when turn detection")
+            return
+        }
+
         do {
             try await commitContext()
         } catch {
             await finishGenerationWithError(LLMOpenAIVoiceError.unknown(error), on: continuation)
         }
     }
+
     // swiftlint:disable:next function_body_length
     func receiveLoop() async {
         guard let task = webSocketTask else {
@@ -41,28 +47,26 @@ extension LLMOpenAIVoiceSession {
                     
                     Self.logger.info("Received WebSocket text message, of type \(type)")
                     
-                    // Check if this is an audio delta or done message.
-                    if type == "session.created" {
-                        Self.logger.info("Session created signal received.")
-                        // Resume the continuation if it exists.
-                        sessionCreatedContinuation?.resume(returning: true)
-                        // Clear the continuation after resuming to avoid multiple resumes.
-                        sessionCreatedContinuation = nil
-                    } else if type == "response.audio.delta" {
+                    switch type {
+                    case "session.created":
+                        Self.logger.info("Session created")
+                        sessionIsActive.send(true)
+                    case "response.audio.delta":
                         // If present, yield the "delta" value to the stream.
                         if let delta = jsonDict["delta"] as? String {
                             audioDeltaContinuation?.yield(delta)
                         } else {
                             Self.logger.warning("Missing 'delta' in audio delta message: \(text)")
                         }
-                    } else if type == "response.audio.done" {
+                    case "response.audio.done":
                         // When done, close the stream.
                         audioDeltaContinuation?.finish()
-                    } else if type == "response.audio_transcript.done" {
+                    case "response.audio_transcript.done":
                         Self.logger.debug("Final transcript: \(jsonDict["transcript"] as? String ?? "Not found")")
-                    } else if type == "response.done" {
+                    case "response.done":
                         guard let response = jsonDict["response"] as? [String: Any],
                               let output = response["output"] as? [[String: Any]],
+                              !output.isEmpty,
                               let type = output[0]["type"] as? String,
                               let name = output[0]["name"] as? String,
                               let callId = output[0]["call_id"] as? String,
@@ -86,7 +90,7 @@ extension LLMOpenAIVoiceSession {
                             ]
                             
                             let eventDataJson = try JSONSerialization.data(withJSONObject: eventData, options: .prettyPrinted)
-
+                            
                             let responseData: [String: Any] = [
                                 "type": "response.create"
                             ]
@@ -98,11 +102,12 @@ extension LLMOpenAIVoiceSession {
                             
                             try await webSocketTask?.send(.string(String(decoding: responseDataJson, as: UTF8.self)))
                         }
-                    } else if type == "error" {
+                        
+                    case "error":
                         Self.logger.error("Encountered error: \(jsonDict)")
+                    default:
+                        Self.logger.info("Received WebSocket message, of another type than text")
                     }
-                } else {
-                    Self.logger.info("Received WebSocket message, of another type than text")
                 }
             } catch {
                 Self.logger.error("WebSocket receive error: \(error.localizedDescription)")
@@ -110,6 +115,34 @@ extension LLMOpenAIVoiceSession {
                 break
             }
         }
+    }
+    
+    func commitToAudioBuffer(base64data: String, contextIndex: Int) async {
+        guard platform.configuration.turnDetectionSettings != nil else {
+            print("Commit to audio buffer only supported when turn detection")
+            return
+        }
+
+        await awaitUntilSessionCreated()
+            do {
+                let eventData: [String: Any] = [
+                    "type": "input_audio_buffer.append",
+                    "audio": base64data
+                ]
+
+                let eventDataJson = try JSONSerialization.data(withJSONObject: eventData, options: .prettyPrinted)
+                
+                try await webSocketTask?.send(.string(String(decoding: eventDataJson, as: UTF8.self)))
+    //            Self.logger.debug("Sent audio buffer:\n\(String(decoding: eventDataJson, as: UTF8.self))")
+                Self.logger.debug("Sent audio buffer")
+            } catch {
+                Self.logger.error("\(error)")
+            }
+        
+        // Remove element from context
+//        DispatchQueue.main.async {
+//            self.context.remove(at: contextIndex) // Error: out of range...
+//        }
     }
     
     private func commitContext() async throws {
@@ -120,13 +153,11 @@ extension LLMOpenAIVoiceSession {
                 "role": "user",
                 "content":
                     context
-                    .filter { $0.role == .user }
-                    .filter { $0.content.starts(with: "text:") }
-                    .compactMap { [ "type": "input_text", "text": $0.content.dropFirst("text:".count) ] }
+                    .filter { $0.role == .user && !$0.isAudio }
+                    .compactMap { [ "type": "input_text", "text": $0.content ] }
                 + context
-                    .filter { $0.role == .user }
-                    .filter { $0.content.starts(with: "voice:") }
-                    .compactMap { [ "type": "input_audio", "audio": $0.content.dropFirst("voice:".count) ] }
+                    .filter { platform.configuration.turnDetectionSettings == nil && $0.role == .user && $0.isAudio }
+                    .compactMap { [ "type": "input_audio", "audio": $0.content ] }
             ]
         ]
         

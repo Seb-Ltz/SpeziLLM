@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+import Combine
 import Foundation
 import os
 import SpeziKeychainStorage
@@ -17,7 +18,11 @@ public final class LLMOpenAIVoiceSession: LLMSession, @unchecked Sendable {
     static let logger = Logger(subsystem: "edu.stanford.spezi", category: "LLMOpenAIVoiceSession")
 
     @MainActor public var state: LLMState = .uninitialized
-    @MainActor public var context: LLMContext = []
+    @MainActor public var context: LLMContext = [] {
+      didSet {
+        handleContextChanged(from: oldValue, to: context)
+      }
+    }
 
     /// A set of `Task`s managing the ``LLMOpenAISession`` output generation.
     @ObservationIgnored var tasks: Set<Task<(), Never>> = []
@@ -26,6 +31,7 @@ public final class LLMOpenAIVoiceSession: LLMSession, @unchecked Sendable {
     @ObservationIgnored var sessionCreatedContinuation: CheckedContinuation<Bool, Never>?
     @ObservationIgnored var webSocketTask: URLSessionWebSocketTask?
     @ObservationIgnored var audioDeltaContinuation: AsyncThrowingStream<String, any Error>.Continuation?
+    @ObservationIgnored let sessionIsActive = CurrentValueSubject<Bool, Never>(false)
 
     let platform: LLMOpenAIVoicePlatform
     let schema: LLMOpenAIVoiceSchema
@@ -68,6 +74,29 @@ public final class LLMOpenAIVoiceSession: LLMSession, @unchecked Sendable {
             for task in tasks {
                 task.cancel()
             }
+        }
+    }
+        
+    private func handleContextChanged(from old: LLMContext, to new: LLMContext) {
+        let diff = new.difference(from: old)
+        for change in diff {
+            switch change {
+            case .insert(offset: let offset, element: let element, associatedWith: _):
+                if element.isAudio && platform.configuration.turnDetectionSettings != nil {
+                    Task {
+                        await commitToAudioBuffer(base64data: element.content, contextIndex: offset)
+                    }
+                }
+            case .remove:
+                break
+            }
+        }
+    }
+    
+    /// Await until receiveing the session.created message from OpenAI
+    func awaitUntilSessionCreated() async {
+        for await value in sessionIsActive.values where value {
+            break
         }
     }
     

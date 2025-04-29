@@ -11,7 +11,6 @@ import os
 import SpeziKeychainStorage
 import SpeziLLM
 
-
 extension LLMOpenAIVoiceSession {
     func setup() async -> Bool {
         await MainActor.run {
@@ -28,7 +27,9 @@ extension LLMOpenAIVoiceSession {
             return false
         }
         
-        let url = URL(string: "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview")!
+        guard let url = URL(string: "wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview") else {
+            return false
+        }
 
         var request = URLRequest(url: url)
         request.addValue("Bearer \(openAPIKey)", forHTTPHeaderField: "Authorization")
@@ -45,11 +46,14 @@ extension LLMOpenAIVoiceSession {
             tasks.insert(task)
         }
 
-        guard await withCheckedContinuation({ continuation in
-            self.sessionCreatedContinuation = continuation
-        }) else {
-            return false
-        }
+        await awaitUntilSessionCreated()
+
+//        guard await withCheckedContinuation({ continuation in
+//            self.sessionCreatedContinuation = continuation
+//        }) else {
+//            return false
+//        }
+
         do {
             try await sendSetupSession()
         } catch {
@@ -63,7 +67,7 @@ extension LLMOpenAIVoiceSession {
         return true
     }
     
-    func sendSetupSession() async throws {
+    private func sendSetupSession() async throws {
         let tools = try schema.functions.values.compactMap { function in
             [
                 "type": "function",
@@ -73,17 +77,13 @@ extension LLMOpenAIVoiceSession {
                     .jsonObject(with: try JSONEncoder().encode(try function.schema), options: []) as? [String: Any] ?? [:]
             ]
         }
-        print(tools.debugDescription)
-        
+
         let sessionUpdateData: [String: Any] = [
             "type": "session.update",
             "session": [
                 "tools": tools
             ]
         ]
-        print("------")
-        print(sessionUpdateData)
-        print("------")
         
         let sessionUpdateDataJson = try JSONSerialization.data(withJSONObject: sessionUpdateData, options: .prettyPrinted)
         
