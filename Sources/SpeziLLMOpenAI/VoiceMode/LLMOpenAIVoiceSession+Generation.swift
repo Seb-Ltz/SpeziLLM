@@ -7,15 +7,18 @@
 //
 
 import Foundation
+import GeneratedOpenAIClient
+import OpenAPIURLSession
 import os
 import SpeziLLM
 
-
 extension LLMOpenAIVoiceSession {
+    typealias RealtimeClientEventResponseCreate = Components.Schemas.RealtimeClientEventResponseCreate
+
     // swiftlint:disable:next identifier_name
     func _generate(continuation: AsyncThrowingStream<String, any Error>.Continuation) async {
-        guard platform.configuration.turnDetectionSettings == nil else {
-            print("Commit to audio buffer only supported when turn detection")
+        guard await context.allSatisfy({ !$0.isAudio }) || platform.configuration.turnDetectionSettings == nil else {
+            print("generate() only supported when turn detection turned off")
             return
         }
 
@@ -46,6 +49,10 @@ extension LLMOpenAIVoiceSession {
                     }
                     
                     Self.logger.info("Received WebSocket text message, of type \(type)")
+                    
+                    await MainActor.run {
+                        self.lastEventType = type
+                    }
                     
                     switch type {
                     case "session.created":
@@ -124,20 +131,21 @@ extension LLMOpenAIVoiceSession {
         }
 
         await awaitUntilSessionCreated()
-            do {
-                let eventData: [String: Any] = [
-                    "type": "input_audio_buffer.append",
-                    "audio": base64data
-                ]
 
-                let eventDataJson = try JSONSerialization.data(withJSONObject: eventData, options: .prettyPrinted)
-                
-                try await webSocketTask?.send(.string(String(decoding: eventDataJson, as: UTF8.self)))
-    //            Self.logger.debug("Sent audio buffer:\n\(String(decoding: eventDataJson, as: UTF8.self))")
-                Self.logger.debug("Sent audio buffer")
-            } catch {
-                Self.logger.error("\(error)")
-            }
+        do {
+            let eventData = Components.Schemas.RealtimeClientEventInputAudioBufferAppend(
+                _type: .input_audio_buffer_period_append,
+                audio: base64data
+            )
+            
+            let encoder = JSONEncoder()
+            let eventDataJson = try encoder.encode(eventData)
+            try await webSocketTask?.send(.string(String(decoding: eventDataJson, as: UTF8.self)))
+            
+            Self.logger.debug("Sent audio buffer:\n\(String(decoding: eventDataJson, as: UTF8.self))")
+        } catch {
+            Self.logger.error("\(error)")
+        }
         
         // Remove element from context
 //        DispatchQueue.main.async {
@@ -163,19 +171,20 @@ extension LLMOpenAIVoiceSession {
         
         let eventDataJson = try JSONSerialization.data(withJSONObject: eventData, options: .prettyPrinted)
         
-        let responseData: [String: Any] = [
-            "type": "response.create",
-            "response": [
-                "modalities": ["text", "audio"],
-                "instructions": "Please assist the user."
-            ]
-        ]
-        let responseDataJson = try JSONSerialization.data(withJSONObject: responseData, options: .prettyPrinted)
-        
         
         try await webSocketTask?.send(.string(String(decoding: eventDataJson, as: UTF8.self)))
         Self.logger.debug("Sent event:\n\(String(decoding: eventDataJson, as: UTF8.self))")
+        
+        try await createResponse()
+    }
     
+    private func createResponse() async throws {
+        let responseData = RealtimeClientEventResponseCreate(
+            _type: .response_period_create,
+            response: .init(modalities: [.text, .audio], instructions: "Please assist the user.")
+        )
+        
+        let responseDataJson = try JSONEncoder().encode(responseData)
         try await webSocketTask?.send(.string(String(decoding: responseDataJson, as: UTF8.self)))
     }
 }

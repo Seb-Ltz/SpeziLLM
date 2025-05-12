@@ -27,8 +27,18 @@ struct LLMVoiceTestView: View {
 
     
     var body: some View {
-        Group {
+        Group { // swiftlint:disable:this closure_body_length
             VStack {
+                HStack {
+                    Circle()
+                        .frame(width: 12, height: 12)
+                        .foregroundColor(llm.isSessionActive ? .green : .red)
+                    Text(llm.isSessionActive ? "Connected" : "Disconected")
+                }
+                
+                Text(llm.lastEventType)
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+
                 TextField("Input", text: $inputText)
                 Text("OneShot length: \(oneShotB64.count) characters")
                 if !isLoading {

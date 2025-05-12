@@ -36,6 +36,11 @@ public final class LLMOpenAIVoiceSession: LLMSession, @unchecked Sendable {
     let platform: LLMOpenAIVoicePlatform
     let schema: LLMOpenAIVoiceSchema
     let keychainStorage: KeychainStorage
+    
+    @MainActor public var lastEventType: String = ""
+    public var isSessionActive: Bool {
+        sessionIsActive.value
+    }
 
     public init(_ platform: LLMOpenAIVoicePlatform, schema: LLMOpenAIVoiceSchema, keychainStorage: KeychainStorage) {
         self.platform = platform
@@ -82,7 +87,7 @@ public final class LLMOpenAIVoiceSession: LLMSession, @unchecked Sendable {
         for change in diff {
             switch change {
             case .insert(offset: let offset, element: let element, associatedWith: _):
-                if element.isAudio && platform.configuration.turnDetectionSettings != nil {
+                if element.role == .user && element.isAudio && platform.configuration.turnDetectionSettings != nil {
                     Task {
                         await commitToAudioBuffer(base64data: element.content, contextIndex: offset)
                     }

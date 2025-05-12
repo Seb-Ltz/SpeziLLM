@@ -11,7 +11,14 @@ import os
 import SpeziKeychainStorage
 import SpeziLLM
 
+import GeneratedOpenAIClient
+import OpenAPIURLSession
+
 extension LLMOpenAIVoiceSession {
+    typealias ToolsPayload = Components.Schemas.RealtimeSessionCreateRequest.toolsPayloadPayload
+    typealias TurnDetectionPayload = Components.Schemas.RealtimeSessionCreateRequest.turn_detectionPayload
+    typealias RealtimeClientEventSessionUpdate = Components.Schemas.RealtimeClientEventSessionUpdate
+    
     func setup() async -> Bool {
         await MainActor.run {
             self.state = .loading
@@ -48,12 +55,6 @@ extension LLMOpenAIVoiceSession {
 
         await awaitUntilSessionCreated()
 
-//        guard await withCheckedContinuation({ continuation in
-//            self.sessionCreatedContinuation = continuation
-//        }) else {
-//            return false
-//        }
-
         do {
             try await sendSetupSession()
         } catch {
@@ -68,26 +69,38 @@ extension LLMOpenAIVoiceSession {
     }
     
     private func sendSetupSession() async throws {
-        let tools = try schema.functions.values.compactMap { function in
-            [
-                "type": "function",
-                "name": Swift.type(of: function).name,
-                "description": Swift.type(of: function).description,
-                "parameters": try JSONSerialization
-                    .jsonObject(with: try JSONEncoder().encode(try function.schema), options: []) as? [String: Any] ?? [:]
-            ]
-        }
+        let tools: [ToolsPayload] = try schema.functions.values.compactMap { function in
+            let functionType = Swift.type(of: function)
+            let encodedSchema = try JSONEncoder().encode(try function.schema)
+            let jsonObject = try JSONSerialization.jsonObject(with: encodedSchema) as? [String: any Sendable] ?? [:]
 
-        let sessionUpdateData: [String: Any] = [
-            "type": "session.update",
-            "session": [
-                "tools": tools
-            ]
-        ]
+            return ToolsPayload(
+                _type: .function,
+                name: functionType.name,
+                description: functionType.description,
+                parameters: try .init(unvalidatedValue: jsonObject)
+            )
+        }
         
-        let sessionUpdateDataJson = try JSONSerialization.data(withJSONObject: sessionUpdateData, options: .prettyPrinted)
+        let turnDetection: TurnDetectionPayload? = platform.configuration.turnDetectionSettings.map {
+            TurnDetectionPayload(
+                _type: $0.type,
+                threshold: $0.threshold,
+                prefix_padding_ms: $0.prefixPaddingMs,
+                silence_duration_ms: $0.silenceDurationMs
+            )
+        }
+    
+        let eventSessionUpdate = RealtimeClientEventSessionUpdate(
+            _type: .session_period_update,
+            session: .init(
+                turn_detection: turnDetection,
+                tools: tools
+            )
+        )
         
-        try await webSocketTask?.send(.string(String(decoding: sessionUpdateDataJson, as: UTF8.self)))
-        Self.logger.debug("Sent session update:\n\(String(decoding: sessionUpdateDataJson, as: UTF8.self))")
+        let eventSessionUpdateJson = try JSONEncoder().encode(eventSessionUpdate)
+        try await webSocketTask?.send(.string(String(decoding: eventSessionUpdateJson, as: UTF8.self)))
+        Self.logger.debug("Sent session update:\n\(String(decoding: eventSessionUpdateJson, as: UTF8.self))")
     }
 }
