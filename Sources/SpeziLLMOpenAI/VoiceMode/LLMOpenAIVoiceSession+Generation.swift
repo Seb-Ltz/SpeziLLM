@@ -28,101 +28,6 @@ extension LLMOpenAIVoiceSession {
             await finishGenerationWithError(LLMOpenAIVoiceError.unknown(error), on: continuation)
         }
     }
-
-    // swiftlint:disable:next function_body_length
-    func receiveLoop() async {
-        guard let task = webSocketTask else {
-            return
-        }
-        
-        while true {
-            do {
-                let message = try await task.receive()
-                
-                if case let .string(text) = message {
-                    guard let jsonData = text.data(using: .utf8),
-                          let jsonObject = try? JSONSerialization.jsonObject(with: jsonData, options: []),
-                          let jsonDict = jsonObject as? [String: Any],
-                          let type = jsonDict["type"] as? String else {
-                        Self.logger.warning("Invalid message format: \(text)")
-                        continue
-                    }
-                    
-                    Self.logger.info("Received WebSocket text message, of type \(type)")
-                    
-                    await MainActor.run {
-                        self.lastEventType = type
-                    }
-                    
-                    switch type {
-                    case "session.created":
-                        Self.logger.info("Session created")
-                        sessionIsActive.send(true)
-                    case "response.audio.delta":
-                        // If present, yield the "delta" value to the stream.
-                        if let delta = jsonDict["delta"] as? String {
-                            audioDeltaContinuation?.yield(delta)
-                        } else {
-                            Self.logger.warning("Missing 'delta' in audio delta message: \(text)")
-                        }
-                    case "response.audio.done":
-                        // When done, close the stream.
-                        audioDeltaContinuation?.finish()
-                    case "response.audio_transcript.done":
-                        Self.logger.debug("Final transcript: \(jsonDict["transcript"] as? String ?? "Not found")")
-                    case "response.done":
-                        guard let response = jsonDict["response"] as? [String: Any],
-                              let output = response["output"] as? [[String: Any]],
-                              !output.isEmpty,
-                              let type = output[0]["type"] as? String,
-                              let name = output[0]["name"] as? String,
-                              let callId = output[0]["call_id"] as? String,
-                              let arguments = output[0]["arguments"] as? String,
-                              type == "function_call"
-                        else {
-                            continue
-                        }
-                        
-                        Self.logger.log("arguments function call: \(arguments)")
-                        Task {
-                            try schema.functions[name]?.injectParameters(from: arguments.data(using: .utf8) ?? Data())
-                            let functionOutput = try await schema.functions[name]?.execute()
-                            let eventData: [String: Any] = [
-                                "type": "conversation.item.create",
-                                "item": [
-                                    "type": "function_call_output",
-                                    "call_id": callId,
-                                    "output": functionOutput
-                                ]
-                            ]
-                            
-                            let eventDataJson = try JSONSerialization.data(withJSONObject: eventData, options: .prettyPrinted)
-                            
-                            let responseData: [String: Any] = [
-                                "type": "response.create"
-                            ]
-                            let responseDataJson = try JSONSerialization.data(withJSONObject: responseData, options: .prettyPrinted)
-                            
-                            
-                            try await webSocketTask?.send(.string(String(decoding: eventDataJson, as: UTF8.self)))
-                            Self.logger.debug("Function call event:\n\(String(decoding: eventDataJson, as: UTF8.self))")
-                            
-                            try await webSocketTask?.send(.string(String(decoding: responseDataJson, as: UTF8.self)))
-                        }
-                        
-                    case "error":
-                        Self.logger.error("Encountered error: \(jsonDict)")
-                    default:
-                        Self.logger.info("Received WebSocket message, of another type than text")
-                    }
-                }
-            } catch {
-                Self.logger.error("WebSocket receive error: \(error.localizedDescription)")
-                audioDeltaContinuation?.finish(throwing: error)
-                break
-            }
-        }
-    }
     
     func commitToAudioBuffer(base64data: String, contextIndex: Int) async {
         guard platform.configuration.turnDetectionSettings != nil else {
@@ -142,15 +47,10 @@ extension LLMOpenAIVoiceSession {
             let eventDataJson = try encoder.encode(eventData)
             try await webSocketTask?.send(.string(String(decoding: eventDataJson, as: UTF8.self)))
             
-            Self.logger.debug("Sent audio buffer:\n\(String(decoding: eventDataJson, as: UTF8.self))")
+            Self.logger.debug("Sent audio buffer!")
         } catch {
             Self.logger.error("\(error)")
         }
-        
-        // Remove element from context
-//        DispatchQueue.main.async {
-//            self.context.remove(at: contextIndex) // Error: out of range...
-//        }
     }
     
     private func commitContext() async throws {
@@ -175,13 +75,15 @@ extension LLMOpenAIVoiceSession {
         try await webSocketTask?.send(.string(String(decoding: eventDataJson, as: UTF8.self)))
         Self.logger.debug("Sent event:\n\(String(decoding: eventDataJson, as: UTF8.self))")
         
-        try await createResponse()
+        try await createResponse(
+            response: .init(modalities: [.text, .audio], instructions: "Please assist the user.")
+        )
     }
     
-    private func createResponse() async throws {
+    func createResponse(response: Components.Schemas.RealtimeResponseCreateParams? = nil) async throws {
         let responseData = RealtimeClientEventResponseCreate(
             _type: .response_period_create,
-            response: .init(modalities: [.text, .audio], instructions: "Please assist the user.")
+            response: response
         )
         
         let responseDataJson = try JSONEncoder().encode(responseData)
