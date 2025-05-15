@@ -33,7 +33,7 @@ struct UITestsApp: App {
             case .llmLocal:
                 LLMLocalTestView()
             case .llmFog:
-                LLMFogChatTestView()
+                LLMFogTestView()
             case .llmVoice:
                 LLMVoiceTestView()
             }

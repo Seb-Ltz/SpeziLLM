@@ -41,14 +41,15 @@
         }
       }
     },
-    "Connected" : {
-
-    },
-    "Disconected" : {
-
-    },
-    "Input" : {
-
+    "DISMISS_BUTTON_LABEL" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dismiss"
+          }
+        }
+      }
     },
     "LLM_DOWNLOAD_DESCRIPTION" : {
       "localizations" : {
@@ -111,12 +112,21 @@
       }
     },
     "LLM_OPENAI_VOICE_VIEW_TITLE" : {
-      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "LLM OpenAI Voice"
+          }
+        }
+      }
+    },
+    "Next" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
           }
         }
       }
